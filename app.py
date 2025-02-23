@@ -43,7 +43,7 @@ def get_ffmi_evaluation(ffmi, gender):
             {"range": (21.5, 23.0), "判定": "かなり筋肉質な体型"},
             {"range": (23.0, 24.0), "判定": "ボディビルなどの競技者レベル"},
             {"range": (24.0, 25.0), "判定": "ナチュラルの限界付近"},
-            {"range": (25.0, None), "判定": "恵まれている体型、ナチュラルが疑われるレベル"}
+            {"range": (25.0, None), "判定": "恵まれている体型、ナチュラルが疑われる"}
         ]
     else:
         thresholds = [
@@ -54,7 +54,7 @@ def get_ffmi_evaluation(ffmi, gender):
             {"range": (17.0, 18.0), "判定": "かなり筋肉質な体型"},
             {"range": (18.0, 19.0), "判定": "ボディビルなどの競技者レベル"},
             {"range": (19.0, 20.0), "判定": "ナチュラルの限界付近"},
-            {"range": (20.0, None), "判定": "恵まれている体型、ナチュラルが疑われるレベル"}
+            {"range": (20.0, None), "判定": "恵まれている体型、ナチュラルが疑われる"}
         ]
     # 色のリスト（ユーザビリティを考慮）
     colors = ["blue", "green", "teal", "yellowgreen", "gold", "darkorange", "orangered", "red"]
@@ -84,6 +84,13 @@ def create_threshold_table(thresholds, value, value_label):
     table_data[idx][f"あなたの{value_label}"] = str(round(value, 2))
     return table_data
 
+def calc_bmi(height, weight):
+    return weight / ((height / 100) ** 2)
+
+def calc_ffmi(height, weight, body_fat):
+    lean_mass = weight * (1 - body_fat / 100)
+    return lean_mass / ((height / 100) ** 2)
+
 # --- メイン処理 ---
 
 st.title("BMIとFFMIの計算・評価アプリ")
@@ -96,9 +103,8 @@ weight = st.sidebar.number_input("体重 (kg)", min_value=30.0, max_value=200.0,
 body_fat = st.sidebar.number_input("体脂肪率 (%)", min_value=0.0, max_value=100.0, value=15.0, step=1.0, format="%.1f")
 
 # 計算
-bmi = weight / ((height / 100) ** 2)
-lean_mass = weight * (1 - body_fat / 100)
-ffmi = lean_mass / ((height / 100) ** 2)
+bmi  = calc_bmi(height, weight)
+ffmi = calc_ffmi(height, weight, body_fat)
 
 # 評価取得
 bmi_eval, bmi_color, bmi_idx, bmi_thresholds = get_bmi_evaluation(bmi)
@@ -106,8 +112,13 @@ ffmi_eval, ffmi_color, ffmi_idx, ffmi_thresholds = get_ffmi_evaluation(ffmi, gen
 
 st.markdown("### 計算結果")
 st.write(f"**性別:** {gender}")
-st.write(f"**計算されたBMI:** {round(bmi, 2)} （評価：{bmi_eval}）")
-st.write(f"**計算されたFFMI:** {round(ffmi, 2)} （評価：{ffmi_eval}）")
+col1, col2 = st.columns(2)
+
+with col1:
+    st.metric(label="BMI", value=f"{round(bmi, 2)}", delta=f"{bmi_eval}", delta_color='off')
+
+with col2:
+    st.metric(label="FFMI", value=f"{round(ffmi, 2)}", delta=f"{ffmi_eval}", delta_color='off')
 
 # グラフ表示（2カラム）
 col1, col2 = st.columns(2)
@@ -171,5 +182,4 @@ FFMI = 除脂肪体重 (kg) ÷ (身長 (m))^2
 </small>
 
 """, unsafe_allow_html=True)
-
 
