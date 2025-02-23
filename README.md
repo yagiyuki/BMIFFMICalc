@@ -1,2 +1,2 @@
 # BodyCompCalc
-bmi,ffmi,fmiの計算
+bmi,ffmiの計算

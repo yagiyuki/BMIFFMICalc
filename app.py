@@ -1,235 +1,204 @@
 import streamlit as st
 import pandas as pd
+import altair as alt
 
-# --- 補助関数 ---
-def format_diff(value):
-    """適正値との差分を +○○kg / -○○kg の形式で返す。"""
-    sign = "+" if value > 0 else ""
-    return f"{sign}{value:.2f} kg"
+# --- 関数定義 ---
 
-# --- BMIテーブル作成 ---
-def make_bmi_table(bmi, height, weight):
+def get_threshold_index(value, thresholds):
     """
-    BMIの値に応じた分類表をDataFrameで返す関数  
-    ※ BMI = 体重(kg) ÷ (身長(m))²  
-    ※ 適正体重 = 22 × (身長(m))²  
+    thresholds: 各要素は {"range": (low, high), "判定": 判定文字列} の辞書
+    low または high が None の場合は無制限を意味する
     """
-    ideal_weight = 22 * (height ** 2)
-    diff = weight - ideal_weight
-    diff_str = format_diff(diff)
-    categories = [
-        {"range": "18.5未満",     "label": "低体重",      "min": None,  "max": 18.5},
-        {"range": "18.5〜25未満", "label": "普通体重",    "min": 18.5,  "max": 25},
-        {"range": "25〜30未満",   "label": "肥満（１度）", "min": 25,    "max": 30},
-        {"range": "30〜35未満",   "label": "肥満（２度）", "min": 30,    "max": 35},
-        {"range": "35〜40未満",   "label": "肥満（３度）", "min": 35,    "max": 40},
-        {"range": "40以上",       "label": "肥満（４度）", "min": 40,    "max": None}
+    for i, threshold in enumerate(thresholds):
+        low, high = threshold["range"]
+        if low is None and value < high:
+            return i, threshold["判定"]
+        elif high is None and value >= low:
+            return i, threshold["判定"]
+        elif low is not None and high is not None and low <= value < high:
+            return i, threshold["判定"]
+    return None, None
+
+def get_bmi_evaluation(bmi):
+    bmi_thresholds = [
+        {"range": (None, 18.5), "判定": "低体重(痩せ型)"},
+        {"range": (18.5, 25),   "判定": "普通体重"},
+        {"range": (25, 30),     "判定": "肥満(1度)"},
+        {"range": (30, 35),     "判定": "肥満(2度)"},
+        {"range": (35, 40),     "判定": "肥満(3度)"},
+        {"range": (40, None),   "判定": "肥満(4度)"}
     ]
-    rows = []
-    for cat in categories:
-        row = {"範囲": cat["range"], "肥満度": cat["label"], "適正体重": "", "適正体重と比較": "", "BMI": ""}
-        in_range = False
-        if cat["min"] is None:
-            if bmi < cat["max"]:
-                in_range = True
-        elif cat["max"] is None:
-            if bmi >= cat["min"]:
-                in_range = True
-        else:
-            if cat["min"] <= bmi < cat["max"]:
-                in_range = True
-        if in_range:
-            row["適正体重"] = f"{ideal_weight:.2f} kg"
-            row["適正体重と比較"] = diff_str
-            row["BMI"] = f"{bmi:.2f}"
-        rows.append(row)
-    return pd.DataFrame(rows)
+    bmi_colors = ["blue", "green", "teal", "olive", "orange", "red"]
+    idx, evaluation = get_threshold_index(bmi, bmi_thresholds)
+    color = bmi_colors[idx] if idx is not None else "black"
+    return evaluation, color, idx, bmi_thresholds
 
-# --- FFMIテーブル作成 ---
-def make_ffmi_table(ffmi, height, fat_free_mass, gender):
+def shift_threshold_ranges(thresholds, shift):
     """
-    FFMIの値に応じた分類表をDataFrameで返す関数  
-    ※ FFMI = 除脂肪体重(kg) ÷ (身長(m))²  
-    ※ 除脂肪体重 = 体重 - (体重×体脂肪率/100)  
-    ※ 男性: 適正除脂肪体重 = 20×(身長)², 分類範囲: 17,20,23,26  
-      女性: 適正除脂肪体重 = 18×(身長)², 分類範囲: 15,18,21,24  
+    指定された thresholds の各 range 値に対して一律で shift を加算/減算する。
+    None はそのまま（上限 or 下限なし）として扱う。
     """
-    if gender == "男性":
-        ideal_ffm = 20 * (height ** 2)
-        categories = [
-            {"range": "17未満",     "label": "低FFMI",      "min": None, "max": 17},
-            {"range": "17〜20未満", "label": "普通FFMI",    "min": 17,   "max": 20},
-            {"range": "20〜23未満", "label": "やや高FFMI",  "min": 20,   "max": 23},
-            {"range": "23〜26未満", "label": "高FFMI",      "min": 23,   "max": 26},
-            {"range": "26以上",     "label": "非常に高FFMI", "min": 26,   "max": None}
-        ]
-    else:
-        ideal_ffm = 18 * (height ** 2)
-        categories = [
-            {"range": "15未満",     "label": "低FFMI",      "min": None, "max": 15},
-            {"range": "15〜18未満", "label": "普通FFMI",    "min": 15,   "max": 18},
-            {"range": "18〜21未満", "label": "やや高FFMI",  "min": 18,   "max": 21},
-            {"range": "21〜24未満", "label": "高FFMI",      "min": 21,   "max": 24},
-            {"range": "24以上",     "label": "非常に高FFMI", "min": 24,   "max": None}
-        ]
-    diff = fat_free_mass - ideal_ffm
-    diff_str = format_diff(diff)
-    rows = []
-    for cat in categories:
-        row = {"範囲": cat["range"], "分類": cat["label"], "適正除脂肪体重": "", "適正除脂肪体重と比較": "", "FFMI": ""}
-        in_range = False
-        if cat["min"] is None:
-            if ffmi < cat["max"]:
-                in_range = True
-        elif cat["max"] is None:
-            if ffmi >= cat["min"]:
-                in_range = True
-        else:
-            if cat["min"] <= ffmi < cat["max"]:
-                in_range = True
-        if in_range:
-            row["適正除脂肪体重"] = f"{ideal_ffm:.2f} kg (理想FFMI: {ideal_ffm/(height**2):.2f})"
-            row["適正除脂肪体重と比較"] = diff_str
-            row["FFMI"] = f"{ffmi:.2f}"
-        rows.append(row)
-    return pd.DataFrame(rows)
-
-# --- FMIテーブル作成 ---
-def make_fmi_table(fmi, height, fat_mass, gender):
-    """
-    FMIの値に応じた分類表をDataFrameで返す関数  
-    ※ FMI = 体脂肪量(kg) ÷ (身長(m))²  
-    ※ 体脂肪量 = 体重×(体脂肪率/100)  
-    ※ 男性: 適正脂肪量 = 6×(身長)², 分類範囲: 3,6,9,12  
-      女性: 適正脂肪量 = 10×(身長)², 分類範囲: 8,11,14,17  
-    """
-    if gender == "男性":
-        ideal_fat_mass = 6 * (height ** 2)
-        categories = [
-            {"range": "3未満",     "label": "低FMI",     "min": None, "max": 3},
-            {"range": "3〜6未満",  "label": "普通FMI",   "min": 3,    "max": 6},
-            {"range": "6〜9未満",  "label": "やや高FMI", "min": 6,    "max": 9},
-            {"range": "9〜12未満", "label": "肥満FMI",   "min": 9,    "max": 12},
-            {"range": "12以上",    "label": "高度肥満FMI", "min": 12,   "max": None}
-        ]
-    else:
-        ideal_fat_mass = 10 * (height ** 2)
-        categories = [
-            {"range": "8未満",     "label": "低FMI",     "min": None, "max": 8},
-            {"range": "8〜11未満",  "label": "普通FMI",   "min": 8,    "max": 11},
-            {"range": "11〜14未満", "label": "やや高FMI", "min": 11,   "max": 14},
-            {"range": "14〜17未満", "label": "肥満FMI",   "min": 14,   "max": 17},
-            {"range": "17以上",    "label": "高度肥満FMI", "min": 17,   "max": None}
-        ]
-    diff = fat_mass - ideal_fat_mass
-    diff_str = format_diff(diff)
-    rows = []
-    for cat in categories:
-        row = {"範囲": cat["range"], "分類": cat["label"], "適正脂肪量": "", "適正脂肪量と比較": "", "FMI": ""}
-        in_range = False
-        if cat["min"] is None:
-            if fmi < cat["max"]:
-                in_range = True
-        elif cat["max"] is None:
-            if fmi >= cat["min"]:
-                in_range = True
-        else:
-            if cat["min"] <= fmi < cat["max"]:
-                in_range = True
-        if in_range:
-            row["適正脂肪量"] = f"{ideal_fat_mass:.2f} kg (理想FMI: {ideal_fat_mass/(height**2):.2f})"
-            row["適正脂肪量と比較"] = diff_str
-            row["FMI"] = f"{fmi:.2f}"
-        rows.append(row)
-    return pd.DataFrame(rows)
-
-def get_overall_evaluation(bmi, ffmi, fmi, gender):
-    """
-    BMI, FFMI, FMIの値から体型を総評する一文を返す関数  
-    ※ BMIによる基本評価に加え、  
-      男性の場合はFFMIが23以上なら「筋肉質」、FMIが9以上なら「体脂肪多め」を付加  
-      女性の場合はFFMIが19以上なら「筋肉質」、FMIが14以上なら「体脂肪多め」を付加
-    """
-    if bmi < 18.5:
-        eval_str = "痩せ型"
-    elif bmi < 25:
-        eval_str = "標準体型"
-    elif bmi < 30:
-        eval_str = "やや肥満"
-    elif bmi < 35:
-        eval_str = "肥満"
-    elif bmi < 40:
-        eval_str = "高度肥満"
-    else:
-        eval_str = "極度の肥満"
+    new_thresholds = []
+    for t in thresholds:
+        low, high = t["range"]
         
+        new_low = None if low is None else low + shift
+        new_high = None if high is None else high + shift
+        
+        new_thresholds.append({
+            "range": (new_low, new_high),
+            "判定": t["判定"]
+        })
+    return new_thresholds
+
+def get_ffmi_evaluation(ffmi, gender):
+    # 男性の基準値を定義
+    male_thresholds = [
+        {"range": (None, 18.0),  "判定": "平均以下の筋肉量"},
+        {"range": (18.0, 19.5),  "判定": "平均的な筋肉量"},
+        {"range": (19.5, 20.5),  "判定": "やや筋肉質な体型"},
+        {"range": (20.5, 21.5),  "判定": "筋肉質な体型"},
+        {"range": (21.5, 22.5),  "判定": "かなり筋肉質な体型"},
+        {"range": (22.5, 23.5),  "判定": "ボディビルなどの競技者レベル"},
+        {"range": (23.5, 25.0),  "判定": "ナチュラルの限界付近"},
+        {"range": (25.0, None),  "判定": "恵まれている人が到達できる体型、ナチュラルが疑われる"}
+    ]
+
     if gender == "男性":
-        if ffmi >= 23:
-            eval_str += "（筋肉質）"
-        if fmi >= 9:
-            eval_str += "（体脂肪多め）"
+        thresholds = male_thresholds
     else:
-        if ffmi >= 19:
-            eval_str += "（筋肉質）"
-        if fmi >= 14:
-            eval_str += "（体脂肪多め）"
-    return eval_str
+        # 女性の場合は男性の閾値から4ポイント引いたものを採用
+        thresholds = shift_threshold_ranges(male_thresholds, -4.0)
 
-# --- Streamlit UI ---
-st.title("BMIの計算アプリ")
+    # 色のリスト（ユーザビリティを考慮）
+    colors = ["blue", "green", "teal", "yellowgreen", "gold", "darkorange", "orangered", "red"]
+    idx, evaluation = get_threshold_index(ffmi, thresholds)
+    color = colors[idx]
+    return evaluation, color, idx, thresholds
 
-# 性別の選択（ラジオボタンにより、男性か女性のどちらかのみ選択）
-gender = 'none' # MEMO: bimの場合は男女の区別なし
-#gender = st.radio("評価対象の性別を選択してください", ("男性", "女性"), key="gender")
-
-st.header("必要なデータの入力")
-# 各入力ウィジェットにキーを指定して前回の入力値を保持
-height_cm = st.number_input("身長 (cm)", min_value=0.0, value=170.0, step=0.1, format="%.1f", key="height")
-height = height_cm / 100
-weight = st.number_input("体重 (kg)", min_value=0.0, value=70.0, step=0.1, format="%.1f", key="weight")
-# MEMO:bmiのみの場合は体脂肪率の入力は不要のため固定値をいれておく
-body_fat_percentage = 10
-# body_fat_percentage = st.number_input("体脂肪率 (%)", min_value=0.0, max_value=100.0, value=20.0, step=0.1, format="%.1f", key="body_fat_percentage")
-
-# 実行ボタン
-if st.button("実行"):
-    st.header("計算結果")
-    if height <= 0:
-        st.error("身長は0より大きい値を入力してください。")
+def format_range_str(low, high):
+    if low is None:
+        return f"{high}未満"
+    elif high is None:
+        return f"{low}以上"
     else:
-        bmi = weight / (height ** 2)
-        fat_mass = weight * (body_fat_percentage / 100)
-        fat_free_mass = weight - fat_mass
-        ffmi = fat_free_mass / (height ** 2)
-        fmi = fat_mass / (height ** 2)
-        
-        # BMIは共通で表示
-        df_bmi = make_bmi_table(bmi, height, weight)
-        overall = get_overall_evaluation(bmi, ffmi, fmi, gender)
-        
-        st.markdown("#### BMI (体格指数)")
-        st.markdown("**計算式:** BMI = 体重(kg) ÷ (身長(m))²  \n**概要:** 体重と身長から算出され、肥満度の大まかな評価に用いられます。")
-        st.table(df_bmi)
+        return f"{low}～{high}未満"
 
-        st.stop()  # MEMO: ffmiとfmiは初版では対応しない
+def create_threshold_table(thresholds, value, value_label):
+    table_data = []
+    for i, threshold in enumerate(thresholds):
+        low, high = threshold["range"]
+        range_str = format_range_str(low, high)
+        table_data.append({
+            value_label: range_str,
+            "判定": threshold["判定"],
+            f"あなたの{value_label}": ""
+        })
+    idx, _ = get_threshold_index(value, thresholds)
+    table_data[idx][f"あなたの{value_label}"] = str(round(value, 2))
+    return table_data
 
-        if gender == "男性":
-            st.markdown("#### FFMI (除脂肪体重指数)")
-            st.markdown("**計算式:** FFMI = 除脂肪体重(kg) ÷ (身長(m))²  \n**概要:** 体重から体脂肪量を除いた除脂肪体重を用い、筋肉量の評価に利用されます。\n※ 除脂肪体重 = 体重 - (体重×体脂肪率/100)")
-            df_ffmi = make_ffmi_table(ffmi, height, fat_free_mass, "男性")
-            st.table(df_ffmi)
-            st.markdown("#### FMI (体脂肪量指数)")
-            st.markdown("**計算式:** FMI = 体脂肪量(kg) ÷ (身長(m))²  \n**概要:** 体重に占める体脂肪量の割合を評価する指標です。\n※ 体脂肪量 = 体重×(体脂肪率/100)")
-            df_fmi = make_fmi_table(fmi, height, fat_mass, "男性")
-            st.table(df_fmi)
-        else:
-            st.markdown("#### FFMI (除脂肪体重指数)")
-            st.markdown("**計算式:** FFMI = 除脂肪体重(kg) ÷ (身長(m))²  \n**概要:** 体重から体脂肪量を除いた除脂肪体重を用い、筋肉量の評価に利用されます。\n※ 除脂肪体重 = 体重 - (体重×体脂肪率/100)")
-            df_ffmi = make_ffmi_table(ffmi, height, fat_free_mass, "女性")
-            st.table(df_ffmi)
-            st.markdown("#### FMI (体脂肪量指数)")
-            st.markdown("**計算式:** FMI = 体脂肪量(kg) ÷ (身長(m))²  \n**概要:** 体重に占める体脂肪量の割合を評価する指標です。\n※ 体脂肪量 = 体重×(体脂肪率/100)")
-            df_fmi = make_fmi_table(fmi, height, fat_mass, "女性")
-            st.table(df_fmi)
+def calc_bmi(height, weight):
+    return weight / ((height / 100) ** 2)
 
+def calc_ffmi(height, weight, body_fat):
+    lean_mass = weight * (1 - body_fat / 100)
+    return lean_mass / ((height / 100) ** 2)
+
+# --- メイン処理 ---
+
+st.title("BMIとFFMIの計算・評価アプリ")
+
+# サイドバー入力
+st.sidebar.header("入力データ")
+gender = st.sidebar.radio("性別を選択してください:", ("男性", "女性"))
+height = st.sidebar.number_input("身長 (cm)", min_value=100.0, max_value=250.0, value=170.0, step=1.0, format="%.1f")
+weight = st.sidebar.number_input("体重 (kg)", min_value=30.0, max_value=200.0, value=60.0, step=1.0, format="%.1f")
+body_fat = st.sidebar.number_input("体脂肪率 (%)", min_value=0.0, max_value=100.0, value=15.0, step=1.0, format="%.1f")
+
+# 計算
+bmi  = calc_bmi(height, weight)
+ffmi = calc_ffmi(height, weight, body_fat)
+
+# 評価取得
+bmi_eval, bmi_color, bmi_idx, bmi_thresholds = get_bmi_evaluation(bmi)
+ffmi_eval, ffmi_color, ffmi_idx, ffmi_thresholds = get_ffmi_evaluation(ffmi, gender)
+
+st.markdown("### 計算結果")
+st.write(f"**性別:** {gender}")
+col1, col2 = st.columns(2)
+
+with col1:
+    st.metric(label="BMI", value=f"{round(bmi, 2)}", delta=f"{bmi_eval}", delta_color='off')
+
+with col2:
+    st.metric(label="FFMI", value=f"{round(ffmi, 2)}", delta=f"{ffmi_eval}", delta_color='off')
+
+# グラフ表示（2カラム）
+col1, col2 = st.columns(2)
+# 最大値を統一
+max_value = max(bmi, ffmi, 40)  # BMIとFFMIの最大値を取得し、最低40を保証
+graph_width = 300
+
+with col1:
+    data_bmi = pd.DataFrame({"項目": ["BMI"], "値": [bmi]})
+    bmi_chart = alt.Chart(data_bmi).mark_bar(color=bmi_color).encode(
+        # X軸のタイトルを「BMI値」に変更し、tickラベルは非表示
+        x=alt.X("項目", axis=alt.Axis(title="BMI値", labels=False)),
+        # Y軸のタイトルは非表示、tickラベルは表示（labels=True）
+        y=alt.Y("値", axis=alt.Axis(title=None, labels=True), scale=alt.Scale(domain=[0, max_value]))
+    ).properties(width=graph_width)
+    st.altair_chart(bmi_chart, use_container_width=False)
+
+with col2:
+    data_ffmi = pd.DataFrame({"項目": ["FFMI"], "値": [ffmi]})
+    ffmi_chart = alt.Chart(data_ffmi).mark_bar(color=ffmi_color).encode(
+        # X軸のタイトルを「FFMI値」に変更し、tickラベルは非表示
+        x=alt.X("項目", axis=alt.Axis(title="FFMI値", labels=False)),
+        # Y軸のタイトルは非表示、tickラベルは表示（labels=True）
+        y=alt.Y("値", axis=alt.Axis(title=None, labels=True), scale=alt.Scale(domain=[0, max_value]))
+    ).properties(width=graph_width)
+    st.altair_chart(ffmi_chart, use_container_width=False)
+
+st.markdown("---")
+
+# BMIの判定基準テーブル
+bmi_table_data = create_threshold_table(bmi_thresholds, bmi, "BMI値")
+st.markdown("### BMIの判定基準")
+st.table(pd.DataFrame(bmi_table_data))
+
+# FFMIの判定基準テーブル
+ffmi_table_data = create_threshold_table(ffmi_thresholds, ffmi, "FFMI値")
+st.markdown("### FFMIの判定基準")
+st.table(pd.DataFrame(ffmi_table_data))
+
+if gender == "女性":
+    st.markdown("※女性のFFMIは男性から4ポイント引いたものを基準にしています")
+
+# 計算式の説明
+st.markdown("""
+---
+### BMI（Body Mass Index）計算式
+BMI = 体重 (kg) ÷ (身長 (m))^2
+
+*例: 身長170cm、体重60kgの場合*  
+1. 身長をメートルに変換: 170cm = 1.70m  
+2. BMI = 60 ÷ (1.70)^2 ≒ 20.76
+
+### FFMI（Fat Free Mass Index）計算式
+除脂肪体重 = 体重 × (1 - 体脂肪率 / 100)  
+FFMI = 除脂肪体重 (kg) ÷ (身長 (m))^2
+
+*例: 身長170cm、体重60kg、体脂肪率15%の場合*  
+1. 除脂肪体重 = 60 × (1 - 0.15) = 60 × 0.85 = 51kg  
+2. FFMI = 51 ÷ (1.70)^2 ≒ 17.66
+---
+<small>
+【免責事項】
+本ツールは、BMIおよびFFMIの概算値を計算し、一般的な指標に基づいて評価を提供するものです。
+表示される情報はあくまで参考であり、医学的な診断やアドバイスを提供するものではありません。
+ご自身の健康状態に関するご相談は、必ず医師や専門家にご相談ください。
+</small>
+
+""", unsafe_allow_html=True)
 
