@@ -28,7 +28,7 @@ def get_bmi_evaluation(bmi):
         {"range": (35, 40),     "判定": "肥満(3度)"},
         {"range": (40, None),   "判定": "肥満(4度)"}
     ]
-    bmi_colors = ["blue", "green", "orange", "red", "purple", "black"]
+    bmi_colors = ["blue", "green", "teal", "olive", "orange", "red"]
     idx, evaluation = get_threshold_index(bmi, bmi_thresholds)
     color = bmi_colors[idx] if idx is not None else "black"
     return evaluation, color, idx, bmi_thresholds
@@ -40,24 +40,22 @@ def get_ffmi_evaluation(ffmi, gender):
             {"range": (18.0, 19.5), "判定": "平均的な筋肉量"},
             {"range": (19.5, 21.0), "判定": "やや筋肉質な体型"},
             {"range": (21.0, 23.0), "判定": "かなり筋肉質な体型"},
-            {"range": (23.0, 24.0), "判定": "アスリートレベル"},
-            {"range": (24.0, 25.0), "判定": "普通の限界体型"},
-            {"range": (25.0, 26.0), "判定": "恵まれている体型"},
-            {"range": (26.0, 27.0), "判定": "ゴリマッチョ体型"},
-            {"range": (27.0, None), "判定": "人類の限界超え"}
+            {"range": (23.0, 24.0), "判定": "ボディビルなどの競技者レベル"},
+            {"range": (24.0, 25.0), "判定": "ナチュラルの限界付近"},
+            {"range": (25.0, None), "判定": "恵まれている体型、ナチュラルが疑われるレベル"}
         ]
-        colors = ["blue", "green", "teal", "olive", "orange", "red", "purple", "brown", "black"]
     else:
         thresholds = [
             {"range": (None, 14.0), "判定": "平均以下の筋肉量"},
-            {"range": (14.0, 16.0), "判定": "平均的な筋肉量"},
+            {"range": (14.0, 15.0), "判定": "平均的な筋肉量"},
+            {"range": (15.0, 16.0), "判定": "やや筋肉質な体型"},
             {"range": (16.0, 17.0), "判定": "筋肉質な体型"},
             {"range": (17.0, 18.0), "判定": "かなり筋肉質な体型"},
-            {"range": (18.0, 19.0), "判定": "アスリートレベル"},
-            {"range": (19.0, 20.0), "判定": "普通の限界体型"},
-            {"range": (20.0, None),  "判定": "ステロイドの可能性"}
+            {"range": (18.0, 19.0), "判定": "ボディビルなどの競技者レベル"},
+            {"range": (19.0, 20.0), "判定": "ナチュラルの限界付近"},
+            {"range": (20.0, None), "判定": "恵まれている体型、ナチュラルが疑われるレベル"}
         ]
-        colors = ["blue", "green", "teal", "olive", "orange", "red", "black"]
+    colors = ["blue", "green", "teal", "olive", "orange", "darkorange", "red"]
     idx, evaluation = get_threshold_index(ffmi, thresholds)
     color = colors[idx] if idx is not None else "black"
     return evaluation, color, idx, thresholds
