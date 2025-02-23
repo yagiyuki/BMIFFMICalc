@@ -102,20 +102,25 @@ ffmi = lean_mass / ((height / 100) ** 2)
 bmi_eval, bmi_color, bmi_idx, bmi_thresholds = get_bmi_evaluation(bmi)
 ffmi_eval, ffmi_color, ffmi_idx, ffmi_thresholds = get_ffmi_evaluation(ffmi, gender)
 
+st.markdown("### 計算結果")
 st.write(f"**性別:** {gender}")
 st.write(f"**計算されたBMI:** {round(bmi, 2)} （評価：{bmi_eval}）")
 st.write(f"**計算されたFFMI:** {round(ffmi, 2)} （評価：{ffmi_eval}）")
 
 # グラフ表示（2カラム）
 col1, col2 = st.columns(2)
+# 最大値を統一
+max_value = max(bmi, ffmi, 40)  # BMIとFFMIの最大値を取得し、最低40を保証
+graph_width = 300
+
 with col1:
     data_bmi = pd.DataFrame({"項目": ["BMI"], "値": [bmi]})
     bmi_chart = alt.Chart(data_bmi).mark_bar(color=bmi_color).encode(
         # X軸のタイトルを「BMI値」に変更し、tickラベルは非表示
         x=alt.X("項目", axis=alt.Axis(title="BMI値", labels=False)),
         # Y軸のタイトルは非表示、tickラベルは表示（labels=True）
-        y=alt.Y("値", axis=alt.Axis(title=None, labels=True), scale=alt.Scale(domain=[0, max(bmi, 40)]))
-    ).properties(width=300)
+        y=alt.Y("値", axis=alt.Axis(title=None, labels=True), scale=alt.Scale(domain=[0, max_value]))
+    ).properties(width=graph_width)
     st.altair_chart(bmi_chart, use_container_width=False)
 
 with col2:
@@ -124,8 +129,8 @@ with col2:
         # X軸のタイトルを「FFMI値」に変更し、tickラベルは非表示
         x=alt.X("項目", axis=alt.Axis(title="FFMI値", labels=False)),
         # Y軸のタイトルは非表示、tickラベルは表示（labels=True）
-        y=alt.Y("値", axis=alt.Axis(title=None, labels=True), scale=alt.Scale(domain=[0, max(ffmi, 30)]))
-    ).properties(width=300)
+        y=alt.Y("値", axis=alt.Axis(title=None, labels=True), scale=alt.Scale(domain=[0, max_value]))
+    ).properties(width=graph_width)
     st.altair_chart(ffmi_chart, use_container_width=False)
 
 # BMIの判定基準テーブル
@@ -152,9 +157,17 @@ BMI = 体重 (kg) ÷ (身長 (m))^2
 除脂肪体重 = 体重 × (1 - 体脂肪率 / 100)  
 FFMI = 除脂肪体重 (kg) ÷ (身長 (m))^2
 
-*例: 体重60kg、体脂肪率15%、身長170cmの場合*  
+*例: 身長170cm、体重60kg、体脂肪率15%の場合*  
 1. 除脂肪体重 = 60 × (1 - 0.15) = 60 × 0.85 = 51kg  
 2. FFMI = 51 ÷ (1.70)^2 ≒ 17.66
-""")
+
+<small>
+【免責事項】
+本ツールは、BMIおよびFFMIの概算値を計算し、一般的な指標に基づいて評価を提供するものです。
+表示される情報はあくまで参考であり、医学的な診断やアドバイスを提供するものではありません。
+ご自身の健康状態に関するご相談は、必ず医師や専門家にご相談ください。
+</small>
+
+""", unsafe_allow_html=True)
 
 
