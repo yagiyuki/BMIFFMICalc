@@ -113,17 +113,22 @@ col1, col2 = st.columns(2)
 with col1:
     data_bmi = pd.DataFrame({"項目": ["BMI"], "値": [bmi]})
     bmi_chart = alt.Chart(data_bmi).mark_bar(color=bmi_color).encode(
-        x=alt.X("項目", axis=alt.Axis(title="項目")),
-        y=alt.Y("値", axis=alt.Axis(title="BMI値"), scale=alt.Scale(domain=[0, max(bmi, 40)]))
-    )
-    st.altair_chart(bmi_chart, use_container_width=True)
+        # X軸のタイトルを「BMI値」に変更し、tickラベルは非表示
+        x=alt.X("項目", axis=alt.Axis(title="BMI値", labels=False)),
+        # Y軸のタイトルは非表示、tickラベルは表示（labels=True）
+        y=alt.Y("値", axis=alt.Axis(title=None, labels=True), scale=alt.Scale(domain=[0, max(bmi, 40)]))
+    ).properties(width=300)
+    st.altair_chart(bmi_chart, use_container_width=False)
+
 with col2:
     data_ffmi = pd.DataFrame({"項目": ["FFMI"], "値": [ffmi]})
     ffmi_chart = alt.Chart(data_ffmi).mark_bar(color=ffmi_color).encode(
-        x=alt.X("項目", axis=alt.Axis(title="項目")),
-        y=alt.Y("値", axis=alt.Axis(title="FFMI値"), scale=alt.Scale(domain=[0, max(ffmi, 30)]))
-    )
-    st.altair_chart(ffmi_chart, use_container_width=True)
+        # X軸のタイトルを「FFMI値」に変更し、tickラベルは非表示
+        x=alt.X("項目", axis=alt.Axis(title="FFMI値", labels=False)),
+        # Y軸のタイトルは非表示、tickラベルは表示（labels=True）
+        y=alt.Y("値", axis=alt.Axis(title=None, labels=True), scale=alt.Scale(domain=[0, max(ffmi, 30)]))
+    ).properties(width=300)
+    st.altair_chart(ffmi_chart, use_container_width=False)
 
 # BMIの判定基準テーブル
 bmi_table_data = create_threshold_table(bmi_thresholds, bmi, "BMI値")
