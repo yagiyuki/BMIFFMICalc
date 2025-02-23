@@ -1,6 +1,14 @@
 import streamlit as st
 import pandas as pd
 import altair as alt
+from PIL import Image
+
+# サムネイル（favicon）を設定
+im = Image.open("favicon.ico")
+st.set_page_config(
+    page_title="BMIとFFMIの計算・評価アプリ",  # タイトルを設定
+    page_icon=im,  # アイコン画像を指定
+)
 
 # --- 関数定義 ---
 

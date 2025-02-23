@@ -1,2 +1,2 @@
 # BodyCompCalc
-bmi,ffmiの計算
+BMIとFFMIの計算・評価アプリ
