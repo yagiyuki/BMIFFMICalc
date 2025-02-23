@@ -61,7 +61,7 @@ def get_ffmi_evaluation(ffmi, gender):
         {"range": (21.5, 22.5),  "判定": "かなり筋肉質な体型"},
         {"range": (22.5, 23.5),  "判定": "ボディビルなどの競技者レベル"},
         {"range": (23.5, 25.0),  "判定": "ナチュラルの限界付近"},
-        {"range": (25.0, None),  "判定": "恵まれている体型、ナチュラルが疑われる"}
+        {"range": (25.0, None),  "判定": "恵まれている人が到達できる体型、ナチュラルが疑われる"}
     ]
 
     if gender == "男性":
@@ -160,6 +160,8 @@ with col2:
     ).properties(width=graph_width)
     st.altair_chart(ffmi_chart, use_container_width=False)
 
+st.markdown("---")
+
 # BMIの判定基準テーブル
 bmi_table_data = create_threshold_table(bmi_thresholds, bmi, "BMI値")
 st.markdown("### BMIの判定基準")
@@ -190,7 +192,7 @@ FFMI = 除脂肪体重 (kg) ÷ (身長 (m))^2
 *例: 身長170cm、体重60kg、体脂肪率15%の場合*  
 1. 除脂肪体重 = 60 × (1 - 0.15) = 60 × 0.85 = 51kg  
 2. FFMI = 51 ÷ (1.70)^2 ≒ 17.66
-
+---
 <small>
 【免責事項】
 本ツールは、BMIおよびFFMIの概算値を計算し、一般的な指標に基づいて評価を提供するものです。
