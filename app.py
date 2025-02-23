@@ -33,29 +33,43 @@ def get_bmi_evaluation(bmi):
     color = bmi_colors[idx] if idx is not None else "black"
     return evaluation, color, idx, bmi_thresholds
 
+def shift_threshold_ranges(thresholds, shift):
+    """
+    指定された thresholds の各 range 値に対して一律で shift を加算/減算する。
+    None はそのまま（上限 or 下限なし）として扱う。
+    """
+    new_thresholds = []
+    for t in thresholds:
+        low, high = t["range"]
+        
+        new_low = None if low is None else low + shift
+        new_high = None if high is None else high + shift
+        
+        new_thresholds.append({
+            "range": (new_low, new_high),
+            "判定": t["判定"]
+        })
+    return new_thresholds
+
 def get_ffmi_evaluation(ffmi, gender):
+    # 男性の基準値を定義
+    male_thresholds = [
+        {"range": (None, 18.0),  "判定": "平均以下の筋肉量"},
+        {"range": (18.0, 19.5),  "判定": "平均的な筋肉量"},
+        {"range": (19.5, 20.5),  "判定": "やや筋肉質な体型"},
+        {"range": (20.5, 21.5),  "判定": "筋肉質な体型"},
+        {"range": (21.5, 22.5),  "判定": "かなり筋肉質な体型"},
+        {"range": (22.5, 23.5),  "判定": "ボディビルなどの競技者レベル"},
+        {"range": (23.5, 25.0),  "判定": "ナチュラルの限界付近"},
+        {"range": (25.0, None),  "判定": "恵まれている体型、ナチュラルが疑われる"}
+    ]
+
     if gender == "男性":
-        thresholds = [
-            {"range": (None, 18.0), "判定": "平均以下の筋肉量"},
-            {"range": (18.0, 19.5), "判定": "平均的な筋肉量"},
-            {"range": (19.5, 20.5), "判定": "やや筋肉質な体型"},
-            {"range": (20.5, 21.5), "判定": "筋肉質な体型"},
-            {"range": (21.5, 23.0), "判定": "かなり筋肉質な体型"},
-            {"range": (23.0, 24.0), "判定": "ボディビルなどの競技者レベル"},
-            {"range": (24.0, 25.0), "判定": "ナチュラルの限界付近"},
-            {"range": (25.0, None), "判定": "恵まれている体型、ナチュラルが疑われる"}
-        ]
+        thresholds = male_thresholds
     else:
-        thresholds = [
-            {"range": (None, 14.0), "判定": "平均以下の筋肉量"},
-            {"range": (14.0, 15.0), "判定": "平均的な筋肉量"},
-            {"range": (15.0, 16.0), "判定": "やや筋肉質な体型"},
-            {"range": (16.0, 17.0), "判定": "筋肉質な体型"},
-            {"range": (17.0, 18.0), "判定": "かなり筋肉質な体型"},
-            {"range": (18.0, 19.0), "判定": "ボディビルなどの競技者レベル"},
-            {"range": (19.0, 20.0), "判定": "ナチュラルの限界付近"},
-            {"range": (20.0, None), "判定": "恵まれている体型、ナチュラルが疑われる"}
-        ]
+        # 女性の場合は男性の閾値から4ポイント引いたものを採用
+        thresholds = shift_threshold_ranges(male_thresholds, -4.0)
+
     # 色のリスト（ユーザビリティを考慮）
     colors = ["blue", "green", "teal", "yellowgreen", "gold", "darkorange", "orangered", "red"]
     idx, evaluation = get_threshold_index(ffmi, thresholds)
@@ -155,6 +169,9 @@ st.table(pd.DataFrame(bmi_table_data))
 ffmi_table_data = create_threshold_table(ffmi_thresholds, ffmi, "FFMI値")
 st.markdown("### FFMIの判定基準")
 st.table(pd.DataFrame(ffmi_table_data))
+
+if gender == "女性":
+    st.markdown("※女性のFFMIは男性から4ポイント引いたものを基準にしています")
 
 # 計算式の説明
 st.markdown("""
