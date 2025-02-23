@@ -38,8 +38,9 @@ def get_ffmi_evaluation(ffmi, gender):
         thresholds = [
             {"range": (None, 18.0), "判定": "平均以下の筋肉量"},
             {"range": (18.0, 19.5), "判定": "平均的な筋肉量"},
-            {"range": (19.5, 21.0), "判定": "やや筋肉質な体型"},
-            {"range": (21.0, 23.0), "判定": "かなり筋肉質な体型"},
+            {"range": (19.5, 20.5), "判定": "やや筋肉質な体型"},
+            {"range": (20.5, 21.5), "判定": "筋肉質な体型"},
+            {"range": (21.5, 23.0), "判定": "かなり筋肉質な体型"},
             {"range": (23.0, 24.0), "判定": "ボディビルなどの競技者レベル"},
             {"range": (24.0, 25.0), "判定": "ナチュラルの限界付近"},
             {"range": (25.0, None), "判定": "恵まれている体型、ナチュラルが疑われるレベル"}
@@ -55,9 +56,10 @@ def get_ffmi_evaluation(ffmi, gender):
             {"range": (19.0, 20.0), "判定": "ナチュラルの限界付近"},
             {"range": (20.0, None), "判定": "恵まれている体型、ナチュラルが疑われるレベル"}
         ]
-    colors = ["blue", "green", "teal", "olive", "orange", "darkorange", "red"]
+    # 色のリスト（ユーザビリティを考慮）
+    colors = ["blue", "green", "teal", "yellowgreen", "gold", "darkorange", "orangered", "red"]
     idx, evaluation = get_threshold_index(ffmi, thresholds)
-    color = colors[idx] if idx is not None else "black"
+    color = colors[idx]
     return evaluation, color, idx, thresholds
 
 def format_range_str(low, high):
