@@ -147,31 +147,34 @@ with col1:
 with col2:
     st.metric(label="FFMI", value=f"{round(ffmi, 2)}", delta=f"{ffmi_eval}", delta_color='off')
 
-# グラフ表示（2カラム）
-col1, col2 = st.columns(2)
 # 最大値を統一
-max_value = max(bmi, ffmi, 40)  # BMIとFFMIの最大値を取得し、最低40を保証
-graph_width = 300
+max_value = max(bmi, ffmi, 40)  # 最低40を保証
+graph_width = 400
 
-with col1:
-    data_bmi = pd.DataFrame({"項目": ["BMI"], "値": [bmi]})
-    bmi_chart = alt.Chart(data_bmi).mark_bar(color=bmi_color).encode(
-        # X軸のタイトルを「BMI値」に変更し、tickラベルは非表示
-        x=alt.X("項目", axis=alt.Axis(title="BMI値", labels=False)),
-        # Y軸のタイトルは非表示、tickラベルは表示（labels=True）
-        y=alt.Y("値", axis=alt.Axis(title=None, labels=True), scale=alt.Scale(domain=[0, max_value]))
-    ).properties(width=graph_width)
-    st.altair_chart(bmi_chart, use_container_width=False)
+# 1つのデータフレームにまとめる
+data = pd.DataFrame({
+    "指標": ["BMI", "FFMI"],
+    "値": [bmi, ffmi]
+})
 
-with col2:
-    data_ffmi = pd.DataFrame({"項目": ["FFMI"], "値": [ffmi]})
-    ffmi_chart = alt.Chart(data_ffmi).mark_bar(color=ffmi_color).encode(
-        # X軸のタイトルを「FFMI値」に変更し、tickラベルは非表示
-        x=alt.X("項目", axis=alt.Axis(title="FFMI値", labels=False)),
-        # Y軸のタイトルは非表示、tickラベルは表示（labels=True）
-        y=alt.Y("値", axis=alt.Axis(title=None, labels=True), scale=alt.Scale(domain=[0, max_value]))
-    ).properties(width=graph_width)
-    st.altair_chart(ffmi_chart, use_container_width=False)
+# Altairで2バーをまとめて描画
+chart = (
+    alt.Chart(data)
+    .mark_bar()
+    .encode(
+        # X軸に「BMI」「FFMI」を、Y軸に値を対応づけ
+        x=alt.X("指標:N", axis=alt.Axis(title=None)),
+        y=alt.Y("値:Q", axis=alt.Axis(title=None), scale=alt.Scale(domain=[0, max_value])),
+        # 指標ごとに色を分けたい場合: カラーに「指標」を指定し、scaleでカラーを指定
+        color=alt.Color(
+            "指標:N", 
+            scale=alt.Scale(domain=["BMI", "FFMI"], range=[bmi_color, ffmi_color])
+        )
+    )
+    .properties(width=graph_width, height=300)
+)
+
+st.altair_chart(chart, use_container_width=True)
 
 st.markdown("---")
 
