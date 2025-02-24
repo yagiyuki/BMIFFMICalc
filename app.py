@@ -118,11 +118,16 @@ def calc_ffmi(height, weight, body_fat):
 st.title("BMIとFFMIの計算・評価アプリ")
 
 # サイドバー入力
-st.sidebar.header("入力データ")
-gender = st.sidebar.radio("性別を選択してください:", ("男性", "女性"))
-height = st.sidebar.number_input("身長 (cm)", min_value=100.0, max_value=250.0, value=170.0, step=1.0, format="%.1f")
-weight = st.sidebar.number_input("体重 (kg)", min_value=30.0, max_value=200.0, value=60.0, step=1.0, format="%.1f")
-body_fat = st.sidebar.number_input("体脂肪率 (%)", min_value=0.0, max_value=100.0, value=15.0, step=1.0, format="%.1f")
+gender = st.radio("性別:", ("男性", "女性"), index=0, horizontal=True)
+
+# 横並びのレイアウトを作成
+col1, col2, col3 = st.columns(3)
+with col1:
+    height = st.number_input("身長 (cm)", min_value=100.0, max_value=250.0, value=170.0, step=1.0, format="%.1f")
+with col2:
+    weight = st.number_input("体重 (kg)", min_value=30.0, max_value=200.0, value=60.0, step=1.0, format="%.1f")
+with col3:
+    body_fat = st.number_input("体脂肪率 (%)", min_value=0.0, max_value=100.0, value=15.0, step=1.0, format="%.1f")
 
 # 計算
 bmi  = calc_bmi(height, weight)
